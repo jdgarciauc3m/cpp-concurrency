@@ -1,0 +1,57 @@
+\subsection{Asynchronous tasks}
+
+\begin{frame}[t,fragile]{Asynchronous tasks and futures}
+\begin{itemize}
+  \item A \textmark{asynchronous task} 
+        allows simplified launch for executing a function. 
+\begin{lstlisting}
+async(f);
+\end{lstlisting}
+
+  \mode<presentation>{\vfill\pause}
+  \item Execution can be:
+    \begin{itemize}
+      \item In other thread (\cppid{std::launch::async}).
+\begin{lstlisting}
+async(launch::async, f);
+\end{lstlisting}
+
+  \mode<presentation>{\vfill\pause}
+      \item In the same thread later (\cppid{std::launch::deferred});
+\begin{lstlisting}
+async(launch::deferred, f);
+\end{lstlisting}
+
+  \mode<presentation>{\vfill\pause}
+      \item Chosen by the implementation:
+\begin{lstlisting}
+async(launch::async | launch::deferred, f);
+async(f);
+\end{lstlisting}
+
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item An invocation to \cppid{std::async()} returns a \cppid{future}.
+\begin{lstlisting}
+auto fut = async(std::launch::async, f);
+auto res = fut.get();
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Asynchronous task invocation}
+\begin{lstlisting}
+#include <future>
+#include <iostream>
+
+double task(int a, int b);
+
+int main() {
+  std::future<double> r = std::async(task, 1, 10);
+  other_task();
+  std::cout << "Result = " << r.get() << "\n";
+  return 0;
+}
+\end{lstlisting}
+\end{frame}

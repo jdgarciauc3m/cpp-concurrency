@@ -1,0 +1,125 @@
+\subsection{Futures and promises}
+
+\begin{frame}[t]{Returning values}
+\begin{itemize}
+  \item A \cppid{future}/\cppid{promise} pair efficiently implements
+        \textmark{value/exception transfer} between threads.
+    \begin{itemize}
+      \item Avoid the need of \textbad{reference argument passing}
+            to simulate value return.
+      \item Both the \cppid{future} and the \cppid{promise} give access to
+            a \textmark{shared state}.
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item \textenum{General idea}:
+    \begin{itemize}
+      \item When a \textgood{thread} needs to \textmark{pass a value} to
+            \textgood{another thread},
+            it establishes the value in a \cppid{promise}.
+      \item Implementation ensures that the value that has been set in a \cppid{promise}
+            is available in the corresponding associated \cppid{future}.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Promises}
+\begin{itemize}
+  \item Accessing the \cppid{promise}:
+    \begin{itemize}
+      \item Set the value with \cppid{p.set\_value()}.
+      \item Set the exception with \cppid{p.set\_exception()}.
+    \end{itemize}
+
+\mode<presentation>{\vfill}
+\begin{lstlisting}
+void f1(promise<int> & p) {
+  try {
+    int x = compute();
+    p.set_value(x);
+  }
+  catch (...) {
+    p.set_exception(current_exception());
+  }
+}
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Futures}
+\begin{itemize}
+  \item Access to the \textemph{future} with \cppid{f.get()}:
+    \begin{itemize}
+      \item A value has been set $\Rightarrow$ Get the value.
+      \item An exception has been set $\Rightarrow$ The exception is thrown.
+      \item Otherwise $\Rightarrow$ Calling thread blocks until a value is available.
+    \end{itemize}
+
+\mode<presentation>{\vfill}
+\begin{lstlisting}
+void f2(future<int> & f) {
+  try {
+    int v = f.get();
+    process(v);
+  }
+  catch (...) {
+    cerr << "Error\n";
+  }
+}
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Packaged tasks}
+\begin{itemize}
+  \item Simplify the task of \emph{connecting} a future and a promise.
+    \begin{itemize}
+      \item \cppid{packaged\_task} 
+            is a wrapper for a function that contains a \cppid{promise}.
+
+      \mode<presentation>{\vfill\pause}
+      \item Its template argument is the type of the function that will be wrapped.
+        \begin{itemize}
+          \item \cppid{packaged\_task<T(U,V)>}: 
+                Packaged task for a function taking a value of type \cppid{U}
+                and a value of type \cppid{V} and returns a value of type \cppid{T}.
+        \end{itemize}
+\begin{lstlisting}
+int square(int x);
+std::string search(std::map<int,std::string>, int);
+
+packaged_task<int(int)> pt1{square};
+packaged_task<std::string(map<int,std::string>, int)> pt2{search}
+\end{lstlisting}
+
+      \mode<presentation>{\vfill\pause}
+      \item Getting the \cppid{future} associated to the 
+            \textemph{promise}: \cppid{pt.get\_future()}.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Concurrently invoking tasks}
+\begin{lstlisting}
+int square(int x) { return x*x; }
+
+void g() {
+  using namespace std;
+
+  packaged_task<int(int)> pt1{square};
+  packaged_task<int(int)> pt2{square};
+
+  future<int> f1 { pt1.get_future() };
+  future<int> f2 { pt2.get_future() };
+
+  thread t1{move(pt1), 10};
+  thread t2{move(pt2), 20};
+
+  cout << "Sum is " << f1.get() + f2.get() << "\n";
+
+  t1.join();
+  t2.join();
+}
+\end{lstlisting}
+\end{frame}
+

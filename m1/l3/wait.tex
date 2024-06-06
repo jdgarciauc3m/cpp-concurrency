@@ -1,0 +1,97 @@
+\subsection{Waiting mechanisms}
+
+\begin{frame}[t,fragile]{Waiting and time}
+\begin{itemize}
+  \item Access the clock.
+\begin{lstlisting}
+using namespace std::chrono;
+auto t1 = high_resolution_clock::now();
+\end{lstlisting}
+
+  \mode<presentation>{\vfill\pause}
+  \item Time differences
+\begin{lstlisting}
+auto dif = duration_cast<nanoseconds>(t2-t1);
+cout << dif.count() << endl;
+\end{lstlisting}
+
+  \mode<presentation>{\vfill\pause}
+  \item Specifying a timeout.
+\begin{lstlisting}
+this_thread::sleep_for(microseconds{500}); // C++11
+this_thread::sleep_for(500us); // C++14
+
+this_thread::sleep_until(t + milliseconds{10}); // C++11
+this_thread::sleep_until(t + 10ms); // C++14
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Condition variables}
+\begin{itemize}
+  \item A mechanism to synchronize thread in the access to shared resources.
+    \begin{itemize}
+      \item \cppid{wait()}: Wait in a \cppid{mutex}.
+      \item \cppid{notify\_one()}: Awakes a thread that is waiting in a \cppid{mutex}.
+      \item \cppid{notify\_all()}: Awakes all threads that are waiting in a \cppid{mutex}.
+    \end{itemize}
+\begin{lstlisting}
+class request;
+
+queue<request> q;
+condition_variable cv;
+mutex m;
+
+void producer();
+void consumer();
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Consumer}
+\begin{lstlisting}
+void consumer() {
+  for (;;) {
+    request msg;
+    { // start of synchronized block
+      unique_lock<mutex> l{m};
+      while (q.empty()) {
+        cv.wait(l);
+      }
+      msg = q.front();
+      q.pop();
+    } // end of synchronized block
+   
+    process(msg);
+  };
+}
+\end{lstlisting}
+\begin{itemize}
+  \item Effect of \cppid{wait}:
+    \begin{enumerate}
+      \item Releases the lock and waits for a notification.
+      \item Acquires the lock when awaken.
+    \end{enumerate}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Producer}
+\begin{lstlisting}
+void producer() {
+  for (;;) {
+    auto msg = generate();
+
+    unique_lock<mutex> l{m};
+    q.push(msg);
+
+    cv.notify_one();
+  }
+}
+\end{lstlisting}
+\begin{itemize}
+\item Effect of \cppid{notify\_one()}:
+  \begin{enumerate}
+    \item Awakes one thread that is waiting in the condition.
+  \end{enumerate}
+\end{itemize}
+\end{frame}

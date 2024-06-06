@@ -1,0 +1,206 @@
+\subsection{Threads}
+
+\begin{frame}[t,fragile]{Launching threads}
+\begin{itemize}
+  \item A thread is represented by objects of class \cppid{std::thread}.
+    \begin{itemize}
+      \item Usually represents an OS thread.
+    \end{itemize}
+
+  \pause
+  \item A function call can be launched in a thread.
+\begin{lstlisting}
+void f1();
+void g() {
+  std::thread t{f1}; // Launch thread running f1()
+  other_task();
+  t.join(); // Wait until t has been completed
+}
+\end{lstlisting}
+
+  \pause
+  \item A function object can be launched in a thread.
+\begin{columns}[T]
+\column{.3\textwidth}
+\begin{lstlisting}
+struct f2 {
+  f2(int x, int y);
+  void operator()();
+};
+\end{lstlisting}
+
+\column{.7\textwidth}
+\begin{lstlisting}
+void g() {
+  // Launch a thread executing f2{10,15}.operator()()
+  std::thread t{f2{10,15}}; 
+  other_task();
+  t.join(); // Wait until t has been completed
+}
+\end{lstlisting}
+\end{columns}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Shared objects}
+\begin{itemize}
+  \item Two threads may access a shared object.
+  \item Possibility for data races.
+\end{itemize}
+\mode<presentation>{\vfill}
+\begin{lstlisting}
+int x = 42;
+
+void f() { ++x; }
+void g() { x=0; }
+void h() { std::cout << "Hello\n"; }
+void i() { std::cout << "Bye\n"; }
+
+void race_condition() {
+  std::thread t1{f}; std::thread t2{g};
+  t1.join(); t2.join();
+
+  std::thread t3{h}; std::thread t4{i};
+  t3.join(); t4.join();
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Argument passing}
+\begin{itemize}
+  \item \textmark{Simplified} argument passing \textemph{without needing} 
+        \emph{casts}.
+  \item \textenum{Multiple alternatives}:
+\end{itemize}
+\begin{lstlisting}
+void f1(int x);
+
+struct f2 {
+  f2(int px) : x{px} {}
+  void operator()();
+  int x;
+}
+
+void g() {
+  std::thread t1{f1, 10}; // Run f1(10)
+  std::thread t2{f2{20}}; // Run f2{20}.operator()()
+  std::thread t3{[] { f1(42); } }; // Run lambda
+  t1.join();
+  t2.join();
+  t3.join();
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example: Function}
+\begin{lstlisting}
+template <typename I>
+void square(I first, I last) {
+  for (auto i=first; i!=last; ++i) {
+    *i *= (*i);
+  }
+}
+
+void transform(std::vector<double> & v) {
+  auto mid = v.begin() + v.size()/2;
+
+  std::thread left{square, v.begin(), mid};
+  std::thread right{square, mid, v.end()};
+
+  left.join();
+  right.join();
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example: Function object}
+\begin{lstlisting}
+template <typename I>
+struct square {
+  square(I first, I last) : first_{first}, last_{last} {}
+
+  void operator()() {
+    for (auto i=first_; i!=last_; ++i) {
+      *i *= (*i);
+    }
+  }
+
+  I first_, last_;
+};
+
+void transform(std::vector<double> & v) {
+  auto mid = v.begin() + v.size()/2;
+  std::thread left{square{v.begin(), mid}};
+  std::thread right{square{mid, v.end()}};
+  left.join();
+  right.join();
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example: Lambda}
+\begin{lstlisting}
+template <typename I>
+void square(I first, I last) {
+  for (auto i=first; i!=last; ++i) {
+    *i *= (*i);
+  }
+}
+
+void transform(std::vector<double> & v) {
+  auto mid = v.begin() + v.size()/2;
+
+  std::thread left{[&]{
+    square(v.begin(), mid); 
+  };
+  std::thread right{[&]{
+    square(mid, v.end()); 
+  };
+
+  left.join();
+  right.join();
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Results return}
+\begin{itemize}
+  \item A \cppid{thread} object represents a link with the thread.
+    \begin{itemize}
+      \item Its \cppid{join()} member function \textbad{does not return} a value.
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item How do I return a value when thread execution finishes?
+    \begin{itemize}
+      \item Pass an \textmark{extra argument} to the function where result needs to be stored.
+        \begin{itemize}
+          \item Pass a pointer.
+          \item Pass a reference.
+          \item Simple mechanism, but \textbad{problematic}.
+        \end{itemize}
+      \item Use \textemph{future} objects.
+        \begin{itemize}
+          \item Allow both \textgood{value} and \textgood{exception} passing.
+          \item Shown later in the course.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Result with pointer argument}
+\lstinputlisting[firstline=6,lastline=20]{m1/l1/code/addvec-ptr.cpp}
+\begin{itemize}
+  \item \textbad{Important}: 
+        Correct while no data is shared.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Result with reference argument}
+\lstinputlisting[firstline=6,lastline=20]{m1/l1/code/addvec-ref.cpp}
+\begin{itemize}
+  \item \textbad{Important}: 
+        Correct while no data is shared.
+\end{itemize}
+\end{frame}
+

@@ -1,0 +1,115 @@
+\subsection{Shared objects access}
+
+\begin{frame}[t,fragile]{Data races}
+\begin{itemize}
+  \item Two potentially concurrent accesses to a memory location constitute
+        a \textbad{data race} if at least one of them is a write and 
+        an ordering cannot be guaranteed.
+    \begin{itemize}
+      \item A program with a data race has \textbad{undefined behavior}.
+    \end{itemize}
+\pause
+\begin{lstlisting}
+int x = 0;
+void f() {
+  ++x;
+}
+
+void g() {
+  using namespace std;
+  thread t1{f}; thread t2{f};
+  t1.join(); t2.join();
+  cout << x << "\n";
+}
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Mutual exclusion}
+\mode<presentation>{\vspace{-.75em}}
+\begin{itemize}
+  \item \cppid{mutex} provides access control to a resource with mutual exclusion.
+    \begin{itemize}
+      \item \cppid{lock()}: Acquires the associated lock.
+      \item \cppid{unlock()}: Releases the associated lock.
+    \end{itemize}
+\begin{lstlisting}
+std::mutex m;
+int x = 0;
+
+void f() {
+  m.lock();
+  ++x;
+  m.unlock();
+}
+
+void g() {
+  using namespace std;
+  thread t1{f}; thread t2{f};
+  t1.join(); t2.join();
+  cout << x << endl;
+}
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Problems with \texttt{lock()}/\texttt{unlock()}}
+\mode<presentation>{\vspace{-.75em}}
+\begin{itemize}
+  \item Possible problems:
+    \begin{itemize}
+      \item Forgetting to release a lock.
+      \item Exceptions.
+    \end{itemize}
+  \item Solution: \cppid{lock\_guard}.
+\begin{lstlisting}
+std::mutex m;
+int x = 0;
+
+void f() {
+  std::lock_guard<std::mutex> l{m}; // Acquires the lock
+  ++x;
+} // Releases the lock
+
+void g() {
+  using namespace std;
+  thread t1(f); thread t2(f);
+  t1.join(); t2.join();
+  cout << x << endl;
+}
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Acquiring multiple \texttt{mutex}es}
+\mode<presentation>{\vspace{-0.5em}}
+\begin{itemize}
+  \item Variadic \cppid{lock()} function allows acquiring
+        several \cppid{mutex} at once.
+    \begin{itemize}
+      \item All or nothing acquisition.
+      \item If any of them cannot be acquired waits releasing all of them.
+    \end{itemize}
+\begin{lstlisting}
+std::mutex m1, m2, m3;
+void f() {
+  std::lock(m1, m2, m3);
+  // Shared object access
+
+} // Care: mutexes are not unlocked
+\end{lstlisting}
+
+  \pause
+  \item Specially useful in cooperation with \cppid{unique\_lock}
+\begin{lstlisting}
+void f() {
+  using namespace std;
+  unique_lock<mutex> l1{m1, defer_lock}, l2{m2, defer_lock};
+  lock(l1, l2);
+  // Shared objects access
+
+} // Mutexes are unlocked
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+

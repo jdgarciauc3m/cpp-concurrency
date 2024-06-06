@@ -1,0 +1,58 @@
+\subsection{Introduction to concurrency in C++}
+
+\begin{frame}[t]{Why?}
+\begin{itemize}
+  \item \textgood{C++11} offers its own \textmark{concurrency model}.
+
+  \mode<presentation>{\vfill\pause}
+  \item Any  \textemph{standard} implementation \textgood{supply it}.
+    \begin{itemize}
+      \item Solves \textbad{problems} inherent to \textmark{PThreads}.
+      \item Concurrent code \textmark{portability}: Windows, POSIX, ...
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item \textenum{Implications}:
+    \begin{itemize}
+      \item Modifications to the \textmark{language}.
+      \item Modifications to the \textmark{standard library}.
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item \textmark{Influences} \textgood{C11} (ISO/IEC 9899:2011).
+
+  \mode<presentation>{\vfill\pause}
+  \item \textbad{Important}: 
+        \textmark{Concurrency} and \textmark{parallelism} are
+        \textemph{related} but \textmark{different concepts}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{What?}
+\begin{itemize}
+  \item \textmark{Language} \textenum{offers}:
+    \begin{itemize}
+      \item A new memory model.
+      \item \cppkey{thread\_local} variables.
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item \textmark{Library} \textenum{offers}:
+    \begin{itemize}
+      \item \textemph{Atomic} types.
+        \begin{itemize}
+          \item Useful for portable \textmark{lock free} programming.
+          \item \textgood{Require} \textmark{compiler support}.
+        \end{itemize}
+      \item Concurrency \textemph{portable abstractions}.
+        \begin{itemize}
+          \item \cppid{thread}.
+          \item \cppid{mutex}, \ldots.
+          \item \cppid{condition\_variable}, \ldots
+          \item \cppid{lock\_guard}, \cppid{unique\_lock}, \ldots.
+          \item \cppid{promise}, \cppid{future}, \cppid{packaged\_task}.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
