@@ -1,0 +1,404 @@
+\subsection{Consistency models}
+
+\begin{frame}[t]{Sequential consistency}
+\begin{itemize}
+  \item \cppid{memory\_order\_seq\_cst}.
+  \mode<presentation>{\vfill}
+  \item The program is consistent with a sequential view.
+  \mode<presentation>{\vfill}
+  \item If all operations on atomics are sequentially consistent,
+    \begin{itemize}
+      \item the multi-threaded program behavior is as if all operations
+            were performed in some particular order in a single thread.
+    \end{itemize}
+  \mode<presentation>{\vfill}
+  \item \textenum{Consequences}:
+    \begin{itemize}
+      \item There cannot be reorderings.
+      \item It is the simplest model to reason about.
+      \item It is the most expensive model in terms of performance.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example}
+\begin{lstlisting}
+std::atomic<bool> x, y;
+std::atomic<int> z;
+
+void f() {
+  x.store(true, std::memory_order_seq_cst);
+}
+
+void g() {
+  y.store(true, std::memory_order_seq_cst);
+}
+
+void h() {
+  while (!x.load(std::memory_order_seq_cst)) {}
+  if (y.load(std::memory_order_seq_cst))  ++ z;
+}
+
+void i() {
+  while (!y.load(std::memory_order_seq_cst)) {}
+  if (x.load(std::memory_order_seq_cst)) ++z;
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example}
+\begin{lstlisting}
+int main() {
+  x = false;
+  y = false;
+  z = 0;
+  std::thread t1{f};
+  std::thread t2{g};
+  std::thread t3{h};
+  std::thread t4{i};
+  t1.join();
+  t2.join();
+  t3.join();
+  t4.join();
+  assert(z.load() !=0);
+  return 0;
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Sequential consistency}
+\begin{tikzpicture}
+\tikzset{
+    sentencia/.style={rectangle,rounded corners,draw=black, top color=white, bottom color=blue!50,very thick, inner sep=0.5em, minimum size=0, text centered, font=\tiny},
+    flecha/.style={->, >=latex', shorten >=1pt, thick, draw=blue},
+    flechasinc/.style={->, >=latex', shorten >=1pt, thick, draw=red},
+    etiqueta/.style={text centered, font=\tiny} 
+}  
+%\pause
+\node[sentencia] (xstore) {x.store(true)};
+\node[sentencia,right=1cm of xstore] (xload1) {x.load()};
+\node[etiqueta, right=0.1cm of xload1] (xload1et) {false};
+\node[sentencia,below=1cm of xload1] (xload2) {x.load()};
+\node[etiqueta, right=0.1cm of xload2] (xload2et) {true};
+\draw[flecha] (xload1) -- (xload2);
+\node[sentencia,right=1cm of xload1et] (yload1) {y.load()};
+\node[etiqueta, right=0.1cm of yload1] (xload1et) {false};
+\node[sentencia,right=1cm of xload1et] (ystore) {y.store(true)};
+\node[sentencia,below=1cm of xload2] (ifyload) {y.load()};
+\draw[flecha] (xload2) -- (ifyload);
+\node[sentencia,below=1cm of yload1] (yload2) {y.load()};
+\node[etiqueta, right=0.1cm of yload2] (yload2et) {true};
+\draw[flecha] (yload1) -- (yload2);
+\node[sentencia,below=1cm of yload2] (ifxload) {x.load()};
+\draw[flecha] (yload2) -- (ifxload);
+\pause
+\draw[flechasinc] (xstore) -- (xload2);
+\draw[flechasinc] (ystore) -- (yload2);
+\pause
+\node[etiqueta,right=0.1cm of ifyload, text=red] (ifyloadet) {false?};
+\pause
+\draw[flechasinc] (ifyload) to [bend right=80] (ystore);
+\pause
+\node[etiqueta,right=0.1cm of ifxload, text=red] (ifxloadet) {true};
+\node[etiqueta,below=0.05cm of ifxloadet, text=red] (incz) {z++};
+\onslide<1->
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}[t,fragile]{Sequential consistency}
+\begin{tikzpicture}
+\tikzset{
+    sentencia/.style={rectangle,rounded corners,draw=black, top color=white, bottom color=blue!50,very thick, inner sep=0.5em, minimum size=0, text centered, font=\tiny},
+    flecha/.style={->, >=latex', shorten >=1pt, thick, draw=blue},
+    flechasinc/.style={->, >=latex', shorten >=1pt, thick, draw=red},
+    etiqueta/.style={text centered, font=\tiny} 
+}  
+%\pause
+\node[sentencia] (xstore) {x.store(true)};
+\node[sentencia,right=1cm of xstore] (xload1) {x.load()};
+\node[etiqueta, right=0.1cm of xload1] (xload1et) {false};
+\node[sentencia,below=1cm of xload1] (xload2) {x.load()};
+\node[etiqueta, right=0.1cm of xload2] (xload2et) {true};
+\draw[flecha] (xload1) -- (xload2);
+\node[sentencia,right=1cm of xload1et] (yload1) {y.load()};
+\node[etiqueta, right=0.1cm of yload1] (xload1et) {false};
+\node[sentencia,right=1cm of xload1et] (ystore) {y.store(true)};
+\node[sentencia,below=1cm of xload2] (ifyload) {y.load()};
+\draw[flecha] (xload2) -- (ifyload);
+\node[sentencia,below=1cm of yload1] (yload2) {y.load()};
+\node[etiqueta, right=0.1cm of yload2] (yload2et) {true};
+\draw[flecha] (yload1) -- (yload2);
+\node[sentencia,below=1cm of yload2] (ifxload) {x.load()};
+\draw[flecha] (yload2) -- (ifxload);
+\pause
+\draw[flechasinc] (xstore) -- (xload2);
+\draw[flechasinc] (ystore) -- (yload2);
+\pause
+\node[etiqueta,right=0.1cm of ifxload, text=red] (ifxloadet) {false?};
+\pause
+\draw[flechasinc] (ifxload) to [bend left=80] (xstore);
+\pause
+\node[etiqueta,right=0.1cm of ifyload, text=red] (ifyloadet) {true};
+\node[etiqueta,below=0.05cm of ifyloadet, text=red] (incz) {z++};
+\onslide<1->
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}[t,fragile]{Non sequentially consistent orderings}
+\begin{itemize}
+\item No global ordering of events.
+  \begin{itemize}
+    \item Each thread might have a different view.
+      \begin{itemize}
+        \item Threads might not agree in event ordering.
+      \end{itemize}
+    \item But, \ldots
+      \begin{itemize}
+        \item All threads must agree in the modification order for each variable.
+      \end{itemize}
+  \end{itemize}
+\mode<presentation>{\vfill}
+\item \textenum{Alternatives}:
+  \begin{itemize}
+    \item Relaxed ordering.
+    \item Release/Acquire ordering
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Relaxed ordering}
+\begin{itemize}
+  \item \cppid{memory\_order\_relaxed}
+  \mode<presentation>{\vfill}
+  \item Relaxed operations on atomics do not participate in \textmark{synchronizes-with}
+        relationships.
+  \mode<presentation>{\vfill}
+  \item Operations on the same variable in the same thread follow \textmark{happens-before}
+        relationships.
+    \begin{itemize}
+      \item Accesses to an atomic variable in the same thread cannot be reordered.
+      \item Once a thread has seen a value from a variable,
+            it cannot see an older value for that variable.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example}
+\begin{columns}
+\begin{column}{0.7\textwidth}
+\begin{lstlisting}
+std::atomic<bool> x, y; std::atomic<int> z;
+
+void f() {
+  x.store(true, std::memory_order_relaxed);
+  y.store(true, std::memory_order_relaxed);
+}
+void g() {
+  while (!y.load(std::memory_order_relaxed)) {}
+  if (x.load(std::memory_order_relaxed)) ++z;
+}
+
+int main() {
+  x = false;
+  y = false;
+  z = 0;
+  std::thread t1{f}; std::thread t2{g};
+  t1.join(); t2.join();
+  assert(z.load() !=0);
+  return 0;
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{0.4\textwidth}
+\begin{tikzpicture}
+\tikzset{
+    sentencia/.style={rectangle,rounded corners,draw=black, top color=white, bottom color=blue!50,very thick, inner sep=0.5em, minimum size=0, text centered, font=\tiny},
+    flecha/.style={->, >=latex', shorten >=1pt, thick, draw=blue},
+    flechasinc/.style={->, >=latex', shorten >=1pt, thick, draw=red},
+    etiqueta/.style={text centered, font=\tiny} 
+}  
+\pause
+\node[sentencia] (xstore) {x.store(true);};
+\node[sentencia,below=1cm of xstore] (ystore) {y.store(true);};
+\draw[flecha] (xstore) -- (ystore);
+\node[sentencia,right=1cm of xstore] (yload1) {y.load()};
+\node[etiqueta, right=0.1cm of yload1] (xload1et) {false};
+\node[sentencia,below=1cm of yload1] (yload2) {y.load()};
+\node[etiqueta, right=0.1cm of yload2] (yload2et) {true};
+\draw[flecha] (yload1) -- (yload2);
+\node[sentencia,below=1cm of yload2] (ifxload) {x.load()};
+\draw[flecha] (yload2) -- (ifxload);
+\pause
+\node[etiqueta,right=0.1cm of ifxload, text=red] (ifxloadet) {??};
+\onslide<1->
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}[t]{Release/Acquire ordering}
+\begin{itemize}
+  \item \cppid{memory\_order\_acquire}, \cppid{memory\_order\_release}, \cppid{memory\_order\_acq\_rel}.
+  \mode<presentation>{\vfill}
+  \item Intermediate synchronization level.
+  \mode<presentation>{\vfill}
+  \item A release operation that writes a value,
+        \textemph{synchronizes-with} an acquire operation that reads that value.
+  \mode<presentation>{\vfill}
+  \item \textenum{Impact}:
+    \begin{itemize}
+      \item Different threads can see different orders.
+      \item Not all orders are possible.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[t,fragile]{Example}
+\begin{lstlisting}
+std::atomic<bool> x, y;
+std::atomic<int> z;
+
+void f() {
+  x.store(true, std::memory_order_release);
+}
+
+void g() {
+  y.store(true, std::memory_order_release);
+}
+
+void h() {
+  while (!x.load(std::memory_order_acquire)) {}
+  if (y.load(std::memory_order_acquire))  ++ z;
+}
+
+void i() {
+  while (!y.load(std::memory_order_acquire)) {}
+  if (x.load(std::memory_order_acquire)) ++z;
+}
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[t,fragile]{Example}
+\begin{lstlisting}
+int main() {
+  x = false;
+  y = false;
+  z = 0;
+  std::thread t1{f};
+  std::thread t2{g};
+  std::thread t3{h};
+  std::thread t4{i};
+  t1.join();
+  t2.join();
+  t3.join();
+  t4.join();
+  assert(z.load() !=0);
+  return 0;
+}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Release/Acquire consistency}
+\begin{tikzpicture}
+\tikzset{
+    sentencia/.style={rectangle,rounded corners,draw=black, top color=white, bottom color=blue!50,very thick, inner sep=0.5em, minimum size=0, text centered, font=\tiny},
+    flecha/.style={->, >=latex', shorten >=1pt, thick, draw=blue},
+    flechasinc/.style={->, >=latex', shorten >=1pt, thick, draw=red},
+    etiqueta/.style={text centered, font=\tiny} 
+}  
+%\pause
+\node[sentencia] (xstore) {x.store(true,release)};
+\node[sentencia,right=1cm of xstore] (xload1) {x.load(acquire)};
+\node[etiqueta, right=0.1cm of xload1] (xload1et) {false};
+\node[sentencia,below=1cm of xload1] (xload2) {x.load(acquire)};
+\node[etiqueta, right=0.1cm of xload2] (xload2et) {true};
+\draw[flecha] (xload1) -- (xload2);
+\node[sentencia,right=1cm of xload1] (yload1) {y.load(acquire)};
+\node[etiqueta, right=0.1cm of yload1] (xload1et) {false};
+\node[sentencia,right=1cm of yload1] (ystore) {y.store(true,release)};
+\node[sentencia,below=1cm of xload2] (ifyload) {y.load(acquire)};
+\draw[flecha] (xload2) -- (ifyload);
+\node[sentencia,below=1cm of yload1] (yload2) {y.load(acquire)};
+\node[etiqueta, right=0.1cm of yload2] (yload2et) {true};
+\draw[flecha] (yload1) -- (yload2);
+\node[sentencia,below=1cm of yload2] (ifxload) {x.load(acquire)};
+\draw[flecha] (yload2) -- (ifxload);
+\pause
+\draw[flechasinc] (xstore) -- (xload2);
+\draw[flechasinc] (ystore) -- (yload2);
+\pause
+\node[etiqueta,right=0.1cm of ifyload, text=red] (ifyloadet) {?};
+\node[etiqueta,right=0.1cm of ifxload, text=red] (ifxloadet) {?};
+\onslide<1->
+\end{tikzpicture}
+\pause
+\begin{itemize}
+  \item Multiple orderings are possible.
+    \begin{itemize}
+      \item There are no \emph{acquire} $\rightarrow$ \emph{release} relationships.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Combining orderings}
+\begin{small}
+\begin{itemize}
+  \item Effect equivalent to sequential consistency but with less cost.
+\end{itemize}
+\end{small}
+\begin{columns}[T]
+\begin{column}{.5\textwidth}
+\begin{lstlisting}[basicstyle=\tiny]
+std::atomic<bool> x, y; 
+std::atomic<int> z;
+
+void f() {
+  x.store(true, std::memory_order_relaxed);
+  y.store(true, std::memory_order_release);
+}
+
+void g() {
+  while (!y.load(std::memory_order_acquire)) {}
+  if (x.load(std::memory_order_relaxed)) ++z;
+}
+
+int main() {
+  x = false; y = false; z = 0;
+  std::thread t1{f}; std::thread t2{g};
+  t1.join(); t2.join();
+  assert(z.load() !=0);
+  return 0;
+}
+\end{lstlisting}
+\end{column}
+\begin{column}{.5\textwidth}
+\begin{tikzpicture}
+\tikzset{
+    sentencia/.style={rectangle,rounded corners,draw=black, top color=white, bottom color=blue!50,very thick, inner sep=0.5em, minimum size=0, text centered, font=\tiny},
+    flecha/.style={->, >=latex', shorten >=1pt, thick, draw=blue},
+    flechasinc/.style={->, >=latex', shorten >=1pt, thick, draw=red},
+    etiqueta/.style={text centered, font=\tiny} 
+}  
+\pause
+\node[sentencia] (xstore) {x.store(true,relaxed);};
+\node[sentencia,below=1cm of xstore] (ystore) {y.store(true,release);};
+\draw[flecha] (xstore) -- (ystore);
+\node[sentencia,right=0.5cm of xstore] (yload1) {y.load(acquire)};
+\node[etiqueta, right=0.1cm of yload1] (xload1et) {false};
+\node[sentencia,below=1cm of yload1] (yload2) {y.load(acquire)};
+\node[etiqueta, right=0.1cm of yload2] (yload2et) {true};
+\draw[flecha] (yload1) -- (yload2);
+\node[sentencia,below=1cm of yload2] (ifxload) {x.load(relaxed)};
+\draw[flecha] (yload2) -- (ifxload);
+\pause
+\draw[flechasinc] (ystore) -- (yload2);
+\pause
+\node[etiqueta,right=0.1cm of ifxload, text=red] (ifxloadet) {true};
+\onslide<1->
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+

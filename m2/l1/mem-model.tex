@@ -1,0 +1,124 @@
+\subsection{Memory model}
+
+\begin{frame}[t]{C++ and memory consistency}
+\begin{itemize}
+  \item \textgood{C++11} define its own \textmark{concurrency model} 
+        as part of the language.
+
+  \mode<presentation>{\vfill}
+  \item \textgood{Goal}: 
+        Avoid the need for coding in
+        \textmark{lower level languages} (C, assembly, \ldots) 
+        to get \textgood{better performance}.
+    \begin{itemize}
+      \item \textemph{Atomic} types.
+      \item Low level \textemph{synchronization} mechanisms.
+    \end{itemize}
+
+  \mode<presentation>{\vfill}
+  \item Allows \textmark{creation} of
+        \textgood{lock free} data structures.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Objects and memory locations}
+\begin{itemize}
+  \item \textgood{Object}: 
+        A storage region.
+    \begin{itemize}
+      \item A sequence of one or more bytes.
+    \end{itemize}
+
+  \mode<presentation>{\vfill}
+  \item \textgood{Memory location}: An object of a \textmark{scalar type} 
+        or a sequence of \textmark{adjacent bit fields}.
+
+  \mode<presentation>{\vfill}
+  \item An \textgood{object} is stored in one or several
+        \textmark{memory locations}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example}
+\begin{itemize}
+  \item Structure:
+\begin{lstlisting}
+struct S {
+  int a;
+  char b;
+  int c: 10;
+  int d: 16;
+  double e;
+};
+S s;
+\end{lstlisting}
+  \mode<presentation>{\vfill}
+  \item Memory locations:
+    \begin{enumerate}
+      \item \cppid{s.a}.
+      \item \cppid{s.b}.
+      \item \cppid{s.c}, \cppid{s.d}.
+      \item \cppid{s.e}.
+    \end{enumerate}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Rules}
+\begin{itemize}
+  \item \textgood{Two threads} may access to different \textmark{memory locations}
+        simultaneously.
+
+  \mode<presentation>{\vfill\pause}
+  \item \textgood{Two threads} may access the \textmark{same memory location}
+        simultaneously if both are read access. 
+
+  \mode<presentation>{\vfill\pause}
+  \item If \textgood{two threads} try to access simultaneously to the same
+        \textmark{memory location} and some the accesses is a \textemph{write}
+        there is a \textbad{potential race condition}.
+    \begin{itemize}
+      \item Depends whether \textemph{an ordering is ensured} between both accesses.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Ordering and races}
+\begin{itemize}
+  \item \textgood{Classic solution}: 
+        Using synchronization mechanisms.
+    \begin{itemize}
+      \item Allows to guarantee mutual exclusion.
+      \item OS based $\rightarrow$ might be costly.
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item \textgood{Alternative}: Using \textmark{atomic operations} to
+        ensure \textemph{ordering} 
+
+  \mode<presentation>{\vfill\pause}
+  \item If \textmark{an ordering is not ensured} between two accesses to a memory location,
+        any of the accesses is \textmark{non-atomic}, 
+        and at least one of the accesses is a \textmark{write},
+        those constitute a \textbad{data race} and
+        \textbad{program behavior is undefined}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Modification order}
+\begin{itemize}
+  \item Sequence of writes to an object.
+    \begin{itemize}
+      \item If two threads see \textmark{different modification orders} on an object
+            there is a \textbad{data race}.
+      \item \textgood{Modifications} do not need to be \textmark{visible}
+            at the same time in all threads.
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item A \textmark{read that is subsequent to a write}
+        in the same thread observes the \textgood{written value}
+        or a \textgood{later value} in its
+        \textemph{modification order}.
+\end{itemize}
+\end{frame}
+

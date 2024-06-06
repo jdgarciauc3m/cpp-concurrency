@@ -1,0 +1,236 @@
+\subsection{Atomic types}
+
+\begin{frame}[t]{Atomic operations}
+\begin{itemize}
+  \item They are \textemph{indivisible operations}.
+
+  \mode<presentation>{\vfill\pause}
+  \item If a \textgood{thread} performs and \textmark{atomic read} on a variable and
+        another \textgood{thread} performs and \textmark{atomic write} on the same variable
+        and there are \textemph{no other threads} accessing:
+
+    \mode<presentation>{\vfill\pause}
+    \begin{itemize}
+      \item The \textgood{read} returns \textmark{value previous} to the write
+            or the \textmark{written value}.
+
+      \mode<presentation>{\vfill\pause}
+      \item If \textgood{any of the operations} (read or write) is 
+            \textmark{non atomic}, \textbad{behavior is undefined}.
+        \begin{itemize}
+          \item Read value might be different from previous and subsequent ones.
+        \end{itemize}
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Atomic types}
+\begin{itemize}
+  \item Generic type \cppid{atomic<T>} allows defining atomic variables
+        for type \cppid{T}, where \cppid{T} is:
+    \begin{itemize}
+      \item An \textmark{integral}.
+      \item A \textmark{pointer type}.
+      \item \cppid{bool}.
+      \item \textbad{Limited interface} for \textmark{floating point types} 
+            (\cppid{float}, \cppid{double}, \cppid{long double}).
+      \item Also for \textmark{user defined types} with some \textbad{constraints}.
+        \begin{itemize}
+          \item Trivially copyable, copy/move constructible/assignable.
+        \end{itemize}
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item All \textemph{atomic types} have a member \cppid{is\_lock\_free()}.
+    \begin{itemize}
+      \item Determines whether the implementation is \textmark{lock free}.
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item Additionally, type \cppid{atomic\_flag}:
+    \begin{itemize}
+      \item The only one guaranteed to be \textmark{lock free}.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{\texttt{atomic\_flag}}
+\begin{itemize}
+  \item \textmark{Simplest} \textgood{atomic type}.
+    \begin{itemize}
+      \item Two possible \textenum{states}: 
+            \textemph{enabled} or \textemph{disabled}.
+
+      \mode<presentation>{\vfill\pause}
+      \item It is always \textmark{lock free}.
+
+      \mode<presentation>{\vfill\pause}
+      \item Always \textmark{explictly initialized} to \textemph{disabled}.
+\begin{lstlisting}
+std::atomic_flag f1 = ATOMIC_FLAG_INIT;
+\end{lstlisting}
+
+      \mode<presentation>{\vfill\pause}
+      \item \textenum{Operations}:
+        \begin{itemize}
+          \item Disable: 
+\begin{lstlisting}
+f1.clear();
+\end{lstlisting}
+
+          \item Enable and check previous value: 
+\begin{lstlisting}
+f1.test_and_set();
+\end{lstlisting}
+        \end{itemize}
+
+      \mode<presentation>{\vfill\pause}
+      \item A \textmark{memory ordering} may be supplied.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example: A \emph{spin lock}}
+\begin{itemize}
+  \item A \textgood{spin lock} is a \textmark{lock} 
+        not making use of OS services.
+    \begin{itemize}
+      \item Useful when you know blocking is very short and you want to avoid
+            context switching issues.
+    \end{itemize}
+\mode<presentation>{\vfill\pause}
+\begin{lstlisting}
+class spinlock_mutex {
+private:
+  std::atomic_flag f;
+public:
+  spinlock_mutex() : f{ATOMIC_FLAG_INIT} {}
+
+  void lock() {
+    while (f.test_and_set()) {}
+  }
+
+  void unlock() {
+    f.clear();
+  }
+};
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{\texttt{atomic<bool>}}
+\mode<presentation>{\vspace{-1em}}
+\begin{itemize}
+  \item More operations than \cppid{atomic\_flag}.
+    \item May be initialized and assigned with \cppid{bool}s.
+    \item Cannot be copied from another \cppid{atomic<bool>}.
+    \item Modification: 
+\begin{lstlisting}
+a.store(b); // b is a bool
+\end{lstlisting}
+    \item Query:
+      \begin{itemize}
+        \item Load a value:
+\begin{lstlisting}
+a.load()
+\end{lstlisting}
+        \item Swapping:
+\begin{lstlisting}
+old = a.exchange(b); // b and old are bools
+\end{lstlisting}
+        \item Automatic conversion to \cppid{bool} (sequential consistency)
+      \end{itemize}
+\end{itemize}
+\begin{lstlisting}
+std::atomic<bool> a;
+bool x = a.load();
+a.store(true);
+x = a.exchange(false);
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[t,fragile]{Compare and swap}
+\begin{itemize}
+  \item Compares the value of the \textgood{atomic} with an 
+        \textmark{expected value}.
+    \begin{itemize}
+      \item If equal, exchange the atomic and \textmark{desired}:
+         \begin{itemize}
+           \item Stores the \textmark{desired} value in the atomic.
+           \item The atomic value is stored into the \textmark{expected}.
+         \end{itemize}
+      \item If not equal, load atomic into \textmark{desired}:
+        \begin{itemize}
+          \item The atomic is left unmodified.
+           \item The atomic value is stored into the \textmark{expected}.
+        \end{itemize}
+      \item It always returns indication of \textemph{success} or \textemph{failure}.
+    \end{itemize}
+
+  \mode<presentation>{\vfill\pause}
+  \item \textenum{Two versions}:
+
+\mode<presentation>{\vfill}
+\begin{lstlisting}
+a.compare_exchange_weak(e,d)
+\end{lstlisting}
+    \begin{itemize}
+      \item Allows \textmark{spurious failures} (context switch) in some architectures.
+    \end{itemize}
+
+\mode<presentation>{\vfill}
+\begin{lstlisting}
+a.compare_exchange_strong(e,d)
+\end{lstlisting}
+    \begin{itemize}
+      \item Does not allow for \textmark{spurious failures}.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{\texttt{atomic<void*>}}
+\begin{itemize}
+  \item Atomic access to memory address.
+  \item Cannot be copied.
+  \item Can copy a pointer \cppid{void*}.
+  \item Interface similar to \cppid{atomic<bool>}:
+    \begin{itemize}
+      \item \cppid{is\_lock\_free()}, \cppid{load()}, \cppid{store()}, \cppid{exchange()},
+            \cppid{compare\_exchange\_weak/strong()}.
+    \end{itemize}
+  \item Additional operations.
+    \begin{itemize}
+      \item \cppid{fetch\_add()}, \cppid{fetch\_sub()}.
+        \begin{itemize}
+          \item Ordering may be supplied.
+          \item Return value before the update.
+        \end{itemize}
+    \end{itemize}
+      \item \cppid{+=}, \cppid{-=}.
+        \begin{itemize}
+          \item Return value after the update.
+        \end{itemize}
+      \item Always use byte arithmetic.
+      \item Other arithmetics: \cppid{atomic<T*>}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{\texttt{atomic<integral>}}
+\begin{itemize}
+  \item Can be applied to all integral types.
+  \item General operations:
+    \begin{itemize}
+      \item \cppid{is\_lock\_free()}, \cppid{load()}, \cppid{store()}, \cppid{exchange()}, 
+            \cppid{compare\_exchange\_weak/strong()}.
+    \end{itemize}
+  \item Arithmetic operations
+    \begin{itemize}
+      \item \cppid{fetch\_add()}, \cppid{fetch\_sub()}, \cppid{fetch\_and()}, \cppid{fetch\_or()}, \cppid{fetch\_xor()}.
+      \item \cppid{+=}, \cppid{-=}, \cppid{\&=}, \cppid{|=}, \cppid{\^{}=}.
+      \item \cppid{++x}, \cppid{x++}, \cppid{--x}, \cppid{x--}
+      \item No other arithmetic operations: (\cppid{*}, \cppid{/}, \cppid{\%}).
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+

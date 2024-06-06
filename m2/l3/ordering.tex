@@ -1,0 +1,103 @@
+\subsection{Ordering relationships}
+
+\begin{frame}[t]{\emph{synchronizes-with} relationship}
+\begin{itemize}
+  \item Relationship between \textmark{operations} on \textgood{atomic types}.
+
+  \mode<presentation>{\vfill\pause}
+  \item A \textmark{write} on an \textgood{atomic value} 
+        \textgood{synchronizes with} a \textmark{read} on that
+        \textgood{atomic value} that \textmark{reads the value}:
+    \begin{itemize}
+
+      \mode<presentation>{\vfill\pause}
+      \item Stored by that \textmark{write}.
+
+      \mode<presentation>{\vfill\pause}
+      \item Stored by a \textmark{subsequent write} from the
+            \textemph{same thread} that performed the write.
+
+      \mode<presentation>{\vfill\pause}
+      \item Stored by a \textmark{sequence of operations} 
+            \textgood{read-modify-write} on the value from
+            \textemph{any thread} where the \textmark{first operation} 
+            read the value stored by the write.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}[t]{\emph{happens-before} relationship}
+\begin{itemize}
+  \item Specifies \textgood{which operation} sees the \textmark{effects from other operation}.
+
+  \mode<presentation>{\vfill\pause}
+  \item Within a thread,
+        an operation \textgood{happens-before} than other operation
+        if it appears in a previous statement.
+
+  \mode<presentation>{\vfill\pause}
+  \item There is no ordering between two operations in the same statement.
+
+  \mode<presentation>{\vfill\pause}
+  \item Among two threads,
+        an operation from one thread \textgood{happens-before} than other operation in
+        another thread if:
+    \begin{itemize}
+      \item There is a \textmark{synchronizes-with} relationship among them.
+      \item There is a chain of \textmark{happens-before} and \textmark{synchronizes-with} 
+            relationships between them.
+    \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[t,fragile]{Example}
+\begin{columns}
+\begin{column}{.5\textwidth}
+\begin{block}{Writer/reader}
+\begin{lstlisting}
+std::vector<int> v; 
+std::atomic<bool> f{false}; 
+
+void writer() { 
+  v.push_back(1);
+  f = true;
+}
+
+void reader() { 
+  while(!f.load()) {
+    std::this_thread::sleep_for(
+      std::milliseconds{1}); 
+  }
+  std::cout << v[0] << "\n";
+} 
+\end{lstlisting}
+\end{block}
+\end{column}
+\begin{column}{.5\textwidth}
+\begin{tikzpicture}
+\tikzset{
+    sentencia/.style={rectangle,rounded corners,draw=black, top color=white, bottom color=blue!50,very thick, inner sep=0.5em, minimum size=0, text centered, font=\tiny},
+    flecha/.style={->, >=latex', shorten >=1pt, thick, draw=blue},
+    flechasinc/.style={->, >=latex', shorten >=1pt, thick, draw=red},
+    etiqueta/.style={text centered, font=\tiny} 
+}  
+\pause
+\node[sentencia] (pushback) {v.push\_back(1);};
+\node[sentencia, below=1cm of pushback] (ftrue) {f=true;};
+\draw[flecha] (pushback) -- (ftrue);
+\node[sentencia, right=1cm of pushback] (fload1) {f.load()};
+\node[etiqueta, right=0.25cm of fload1] (etfload1) {false};
+\node[sentencia, below=0.5cm of fload1] (fload2) {f.load()};
+\node[etiqueta, right=0.25cm of fload2] (etfload2) {true};
+\draw[flecha] (fload1) -- (fload2);
+\node[sentencia, below=1cm of fload2] (print) {std::cout <{}< v[0]; };
+\draw[flecha] (fload2) -- (print);
+\pause
+\draw[flechasinc] (ftrue) -- (fload2);
+\onslide<1->
+\end{tikzpicture}
+\end{column}
+\end{columns}
+\end{frame}
+
