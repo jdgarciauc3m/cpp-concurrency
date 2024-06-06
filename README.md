@@ -1,4 +1,4 @@
-# Generic programming in modern C++
+# Concurrent programming in modern C++
 
 This repo contains the materials for a workshop on move semantics
 
